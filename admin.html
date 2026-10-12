@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>T40 · Reservas (privado)</title>
+<style>
+:root{--bg:#0c0a07;--panel:#16130e;--line:#3a3123;--gold:#c9a24b;--gold2:#e8cf8f;--text:#efe8d8;--mut:#a79d88;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:400 1rem/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;padding:1.25rem}
+main{max-width:46rem;margin:0 auto}
+h1{font:700 1.7rem Georgia,serif;color:var(--gold2);margin:0 0 1rem}
+h2{font:700 1.1rem system-ui,sans-serif;color:var(--gold2);margin:1.5rem 0 .5rem;text-transform:capitalize}
+input,button{font:inherit}
+input{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:2px;padding:.65rem;width:100%;margin:.3rem 0 .8rem}
+button,.b{background:var(--gold);color:#1a1409;border:0;border-radius:2px;padding:.6rem 1rem;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
+.g{background:none;color:var(--gold2);border:1px solid var(--gold)}
+.fila{display:flex;gap:.6rem;flex-wrap:wrap;align-items:end}.fila>*{flex:1;min-width:8rem}
+.r{background:var(--panel);border:1px solid var(--line);padding:.8rem 1rem;margin:.5rem 0}
+.r.c{opacity:.45}
+.r b{color:var(--gold2)}
+.m{color:var(--mut);font-size:.9rem}
+.e{color:#ff9d8a;min-height:1.4rem}
+.acc{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.6rem}.acc>*{padding:.4rem .8rem;font-size:.9rem}
+a{color:var(--gold2)}
+</style>
+</head>
+<body>
+<main>
+<h1>T40 · Reservas</h1>
+<div id="login">
+<label>Clave de administración<input id="tok" type="password" autocomplete="current-password"></label>
+<button id="entrar" type="button">Entrar</button>
+<p class="e" id="e1" role="alert"></p>
+</div>
+<div id="panel" hidden>
+<div class="fila">
+<label>Desde<input id="d1" type="date"></label>
+<label>Hasta<input id="d2" type="date"></label>
+<button id="ver" type="button">Ver reservas</button>
+<button id="salir" class="g" type="button">Salir</button>
+</div>
+<p class="m" id="info"></p>
+<p class="e" id="e2" role="alert"></p>
+<div id="lista"></div>
+</div>
+</main>
+<script>
+var $ = function(i){ return document.getElementById(i); };
+var TOK = sessionStorage.getItem("t40tok") || "";
+var DIAS = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
+function iso(d){ return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0"); }
+function bonita(f){ var p = f.split("-"); return DIAS[new Date(f + "T12:00:00").getDay()] + " " + p[2] + "/" + p[1] + "/" + p[0]; }
+function api(url, opts){
+  opts = opts || {}; opts.headers = Object.assign({Authorization: "Bearer " + TOK}, opts.headers || {});
+  return fetch(url, opts).then(function(r){ return r.json().then(function(j){ j.status = r.status; return j; }); });
+}
+function carga(){
+  $("e2").textContent = "";
+  api("/api/admin?desde=" + $("d1").value + "&hasta=" + $("d2").value).then(function(j){
+    if (j.status === 401) { salir("Clave incorrecta."); return; }
+    if (!j.ok) { $("e2").textContent = j.error || "Error"; return; }
+    if (j.info) $("info").textContent = "Reservas confirmadas guardadas en D1: " + j.info.confirmadas + " · Citas a la vez: " + j.info.capacidad + " · Intervalo: " + j.info.paso + " min";
+    pinta(j.reservas);
+  }).catch(function(){ $("e2").textContent = "No se pudo conectar."; });
+}
+function pinta(rs){
+  var c = $("lista"); c.textContent = "";
+  if (!rs.length) { c.textContent = "No hay reservas en estas fechas."; return; }
+  var dia = "";
+  rs.forEach(function(x){
+    if (x.fecha !== dia) { dia = x.fecha; var h = document.createElement("h2"); h.textContent = bonita(dia); c.appendChild(h); }
+    var d = document.createElement("div"); d.className = "r" + (x.estado === "cancelada" ? " c" : "");
+    var t = document.createElement("div"); var b = document.createElement("b"); b.textContent = x.hora + " – " + x.fin; t.appendChild(b);
+    t.appendChild(document.createTextNode("  " + x.servicio + (x.estado === "cancelada" ? " (CANCELADA)" : ""))); d.appendChild(t);
+    var n = document.createElement("div"); n.textContent = x.nombre + " · " + x.telefono; d.appendChild(n);
+    if (x.notas) { var no = document.createElement("div"); no.className = "m"; no.textContent = "Comentario: " + x.notas; d.appendChild(no); }
+    var m = document.createElement("div"); m.className = "m"; m.textContent = "Código " + x.ref; d.appendChild(m);
+    if (x.estado === "confirmada") {
+      var a = document.createElement("div"); a.className = "acc";
+      var l = document.createElement("a"); l.className = "b g"; l.target = "_blank"; l.rel = "noopener";
+      l.href = "https://wa.me/34" + x.telefono + "?text=" + encodeURIComponent("Hola " + x.nombre + ", te escribimos de T40 sobre tu cita del " + bonita(x.fecha) + " a las " + x.hora + ".");
+      l.textContent = "WhatsApp al cliente"; a.appendChild(l);
+      var k = document.createElement("button"); k.type = "button"; k.className = "g"; k.textContent = "Cancelar reserva";
+      k.addEventListener("click", function(){
+        if (!confirm("¿Cancelar la reserva de " + x.nombre + " (" + bonita(x.fecha) + " " + x.hora + ")? La hora quedará libre.")) return;
+        api("/api/admin", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({accion: "cancelar", id: x.id})}).then(carga);
+      });
+      a.appendChild(k); d.appendChild(a);
+    }
+    c.appendChild(d);
+  });
+}
+function salir(msg){ sessionStorage.removeItem("t40tok"); TOK = ""; $("panel").hidden = true; $("login").hidden = false; $("e1").textContent = msg || ""; }
+function abre(){
+  var h = new Date(), f = new Date(); f.setDate(f.getDate() + 30);
+  $("d1").value = iso(h); $("d2").value = iso(f); $("login").hidden = true; $("panel").hidden = false; carga();
+}
+$("entrar").addEventListener("click", function(){
+  TOK = $("tok").value.trim(); if (!TOK) return;
+  api("/api/admin?desde=2000-01-01&hasta=2000-01-01").then(function(j){
+    if (j.status === 401) { $("e1").textContent = "Clave incorrecta."; return; }
+    if (!j.ok) { $("e1").textContent = j.error || "Error"; return; }
+    sessionStorage.setItem("t40tok", TOK); $("e1").textContent = ""; abre();
+  }).catch(function(){ $("e1").textContent = "No se pudo conectar."; });
+});
+$("tok").addEventListener("keydown", function(ev){ if (ev.key === "Enter") $("entrar").click(); });
+$("ver").addEventListener("click", carga); $("salir").addEventListener("click", function(){ salir(""); });
+if (TOK) abre();
+</script>
+</body>
+</html>

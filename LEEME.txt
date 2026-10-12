@@ -1,0 +1,118 @@
+T40 BARBERÍA - WEB CON RESERVAS REALES (Cloudflare Pages + base de datos D1)
+
+ARCHIVOS
+  index.html    La web (diseño, fotos y formulario de reservas).
+  _worker.js    El "cerebro" de las reservas. Aquí se configuran las duraciones.
+  _routes.json  Hace que _worker.js solo se use para /api/*.
+  admin.html    Página PRIVADA del propietario: ver y cancelar reservas (/admin.html).
+  schema.sql    Crea la tabla de reservas en la base de datos D1 (se ejecuta una vez).
+  _headers, robots.txt   Ajustes de seguridad y de Google.
+
+IMPORTANTE: SIN ESTOS PASOS, LAS RESERVAS NO FUNCIONAN
+Sin base de datos conectada, o con las duraciones sin configurar, la web NO activa las reservas:
+muestra "La reserva online aún no está disponible" y ofrece pedir la cita por WhatsApp.
+
+PASO 0 - DATOS QUE HAY QUE PEDIRLE AL PROPIETARIO (y poner en _worker.js, bloque CONFIG)
+  1. Duración en minutos de CADA uno de los 7 servicios: campo "duracion" de _worker.js.
+     Ahora están en null (vacío) a propósito: hasta que se pongan, las reservas NO se activan.
+     Ejemplo: duracion: 30
+  2. Cada cuántos minutos se ofrece una hora: "paso". CONFIRMADO por el propietario: 30 (10:00, 10:30...).
+     Es el intervalo entre horas, no la duración de los servicios.
+  3. Cuántas personas se atienden A LA VEZ: "capacidad" (ahora 1: nunca se solapan citas).
+     Si hay 2 barberos trabajando a la vez, ponlo en 2.
+  4. Hasta cuántos días por delante se puede reservar: "diasAdelante" (ahora 30).
+  5. Cuántas reservas futuras puede tener un mismo teléfono: "maxActivasPorTelefono" (ahora 2).
+  6. Precios (ya puestos): si cambia alguno, edítalo en _worker.js (CONFIG) Y en la lista de index.html.
+  El horario (martes a domingo, 9:00-14:00 y 16:00-21:00, lunes cerrado) ya es el del cartel.
+  Edita _worker.js con el Bloc de notas o VS Code y guarda.
+
+PASO 1 - CREAR LA BASE DE DATOS
+  1. dash.cloudflare.com > Storage & databases (o "Workers & Pages") > D1 > Create database.
+  2. Nombre: t40-reservas. Créala.
+  3. Entra en ella > pestaña Console. Pega TODO el contenido de schema.sql y pulsa Execute.
+  (Los nombres de los menús de Cloudflare pueden cambiar un poco.)
+
+PASO 2 - SUBIR LA WEB
+  1. Workers & Pages > Create application > Pages > Drag and drop your files (subida directa).
+  2. Nombre del proyecto, por ejemplo t40barberia.
+  3. Arrastra la carpeta (o este .zip). _worker.js tiene que quedar en la raíz, junto a index.html.
+     Cloudflare no compila una carpeta "functions" con arrastrar y soltar, por eso este proyecto usa
+     un único archivo _worker.js, que sí está permitido.
+
+PASO 3 - CONECTAR LA BASE DE DATOS
+  1. En el proyecto: Settings > Bindings (o Functions > D1 database bindings) > Add > D1 database.
+  2. Nombre de variable: DB   (en mayúsculas, exacto).  Base de datos: t40-reservas.
+  3. Guarda (hazlo en Production).
+
+PASO 4 - CLAVE DEL PROPIETARIO
+  1. Settings > Variables and Secrets > Add. Tipo: Secret. Nombre: ADMIN_TOKEN
+  2. Valor: una clave larga y difícil (mínimo 16 caracteres; mejor 30). Guárdala en un gestor de claves.
+  Sin ADMIN_TOKEN, /admin.html no funciona (es lo correcto: nadie puede entrar).
+
+PASO 5 - VOLVER A SUBIR
+  Los cambios del paso 3 y 4 solo se aplican en una subida NUEVA. Vuelve a arrastrar la carpeta
+  (Deployments > Create deployment, o el mismo método del paso 2).
+
+PASO 6 - COMPROBAR (en este orden)
+  1. Abre  https://TU-PROYECTO.pages.dev/api/config
+     Debe salir  "listo":true . Si sale "listo":false, mira "motivo":
+       "Base de datos no conectada"            -> repite los pasos 3 y 5.
+       "Faltan las duraciones de los servicios"-> paso 0 y vuelve a subir.
+  2. En la web: Pedir cita > elige servicio, día y hora > datos > Confirmar.
+  3. Abre /admin.html, escribe la clave y comprueba que sale la reserva. Pulsa Cancelar y comprueba
+     que la hora vuelve a estar libre.
+  4. Haz una reserva desde un móvil y otra desde el ordenador a la misma hora: la segunda debe avisar
+     "Esa hora acaba de ocuparse".
+  5. BORRA las reservas de prueba desde /admin.html (Cancelar) antes de abrir al público.
+
+COMO FUNCIONA (resumen honesto)
+  - Las reservas se guardan en la base de datos D1 de Cloudflare, compartida por todos los clientes.
+  - Al confirmar, el servidor comprueba que la hora sigue libre y la guarda en un único paso, así que
+    dos clientes no pueden quedarse con la misma hora, ni siquiera pulsando a la vez.
+  - Cada servicio bloquea su duración: si hay cita de 11:00 a 11:30, no se puede reservar a las 10:45
+    un servicio de 30 minutos que termine a las 11:15.
+  - El cliente recibe un código de reserva. Para cambiar o cancelar, escribe a T40 por WhatsApp y el
+    propietario la cancela desde /admin.html.
+
+LÍMITES QUE DEBES CONOCER (no están resueltos)
+  - NO se verifica el teléfono (sin SMS). Alguien podría reservar con datos falsos. Mitigaciones incluidas:
+    límite de reservas por teléfono, campo trampa contra robots y cancelación desde /admin.html.
+    Recomendado: en Cloudflare, Security > WAF > Rate limiting, limita /api/reservar.
+  - El propietario NO recibe aviso automático: tiene que mirar /admin.html. El cliente puede enviarle un
+    aviso por WhatsApp con un botón opcional. Un aviso automático necesitaría un servicio extra
+    (correo, la API de WhatsApp Business...) que NO está incluido.
+  - El cliente no puede cancelar solo. No hay pago online.
+  - No se pueden crear citas a mano (llamadas, clientes en el local) desde /admin.html. Si el propietario
+    atiende así, esas horas aparecerán libres en la web.
+  - La web sigue diciendo "Atendemos por orden de llegada" (según el cartel). Con reservas por hora, el
+    propietario debe decidir qué texto prefiere.
+  - Datos personales: ahora se GUARDAN nombre y teléfono. El aviso legal y la política de privacidad
+    deben completarse con los datos reales (plazo de conservación, titular...) y revisarse con un gestor.
+    Conviene borrar las reservas antiguas cada cierto tiempo.
+  - Revisa en Cloudflare los límites del plan gratuito de Pages y D1 para el tráfico que esperas.
+  - La vista previa de claude.ai NO puede usar las reservas (no hay base de datos allí): solo se ve el
+    aviso de "no disponible" y la opción de WhatsApp. Las reservas solo funcionan ya publicadas en Cloudflare.
+
+ANTES DE ENSEÑAR LA WEB AL PÚBLICO
+  Rellena los textos amarillos de index.html ([PENDIENTE...], [REVISAR...]) y borra el recuadro
+  "Borrador" del aviso legal.
+
+
+COMO COMPROBAR QUE UNA RESERVA SE HA GUARDADO DE VERDAD EN D1
+  Hay DOS formas de pedir cita en la web y solo una guarda en la base de datos:
+    - "Reserva tu cita" con 3 pasos: termina con "¡Reserva confirmada!" y un CÓDIGO de 6 letras. ESA se guarda en D1.
+    - "Enviar solicitud por WhatsApp" (aparece si las reservas no están activas): solo abre WhatsApp. NO guarda
+      nada y NO bloquea horas, por eso siempre muestra todas las horas.
+  Si tras "reservar" no viste un código de 6 letras, no se guardó nada en D1.
+  Para comprobarlo en tu Cloudflare (tres formas, de la más fácil a la más técnica):
+    1. Abre  https://TU-PROYECTO.pages.dev/api/disponibilidad?fecha=2026-10-13&servicio=corte
+       En la respuesta mira  "ocupadas":[...]  Si has reservado de 10:00 a 11:00 debe salir
+       {"desde":"10:00","hasta":"11:00"}  y la hora 10:00 debe tener  "libre":false .
+       Si "ocupadas" sale vacío ([]) la reserva NO está en la base de datos que usa la web.
+    2. Abre /admin.html, entra con tu clave: arriba pone "Reservas confirmadas guardadas en D1: N" y debajo
+       se listan. También verás "Citas a la vez" (capacidad): si es 2 o más, una hora con 1 cita SIGUE
+       apareciendo libre porque aún cabe otra persona. Eso no es un fallo: es la capacidad.
+    3. En D1 > tu base > Console:  SELECT fecha, inicio, fin, servicio, nombre, estado FROM reservas ORDER BY creada DESC LIMIT 10;
+       (inicio y fin están en minutos desde las 00:00: 600 = 10:00, 660 = 11:00).
+  Si tienes varias bases D1, comprueba que la que está conectada con el nombre DB es la misma donde ejecutaste
+  schema.sql (Settings > Bindings).
