@@ -1,6 +1,7 @@
-// T40 Barbería · Sistema de reservas
-// Cloudflare Pages (modo avanzado: _worker.js) + base de datos D1 (enlace llamado DB).
-// Sirve la web (archivos estáticos) y la API /api/*. Todo en un único archivo.
+// T40 Barbería · Servidor de reservas (src/index.js)
+// Cloudflare Workers + Static Assets (carpeta public/, enlace ASSETS) + base de datos D1 (enlace DB).
+// Con "run_worker_first": ["/api/*"] en wrangler.jsonc, este Worker atiende SOLO las rutas /api/*;
+// el resto de la web (index.html, admin.html...) la sirve Cloudflare directamente desde public/.
 
 // ============ CONFIGURACIÓN (edítala con el propietario y vuelve a subir la web) ============
 const CONFIG = {
@@ -22,16 +23,16 @@ const CONFIG = {
   tardeDesde: "14:00",       // solo agrupa los botones: antes = Mañana
   nocheDesde: "20:00",       // desde aquí = Noche; entre medias = Tarde
   // SERVICIOS Y PRECIOS (lista confirmada por el propietario). Si cambia un precio, cámbialo AQUÍ y en la lista de index.html.
-  // DURACIONES: pon los minutos que acuerde el propietario (número entero, p. ej. duracion: 30).
-  // Con "null" las reservas NO se activan: la web ofrece pedir la cita por WhatsApp.
+  // DURACIONES: 30 minutos cada servicio (confirmado por el propietario). Si algún día cambia, pon aquí los minutos (número entero).
+  // Con "null" las reservas NO se activan y la web ofrece pedir la cita por WhatsApp.
   servicios: [
-    { id: "corte", nombre: "Corte normal", precio: 10, duracion: null },
-    { id: "corte-barba", nombre: "Corte + barba", precio: 15, duracion: null },
-    { id: "barba", nombre: "Barba", precio: 6, duracion: null },
-    { id: "mascarilla", nombre: "Mascarilla", precio: 5, duracion: null },
-    { id: "proteina", nombre: "Proteína", precio: 50, duracion: null },
-    { id: "mechas-plateadas", nombre: "Mechas plateadas", precio: 50, duracion: null },
-    { id: "combo-completo", nombre: "Corte + barba + mascarilla + lavado", precio: 25, duracion: null },
+    { id: "corte", nombre: "Corte normal", precio: 10, duracion: 30 },
+    { id: "corte-barba", nombre: "Corte + barba", precio: 15, duracion: 30 },
+    { id: "barba", nombre: "Barba", precio: 6, duracion: 30 },
+    { id: "mascarilla", nombre: "Mascarilla", precio: 5, duracion: 30 },
+    { id: "proteina", nombre: "Proteína", precio: 50, duracion: 30 },
+    { id: "mechas-plateadas", nombre: "Mechas plateadas", precio: 50, duracion: 30 },
+    { id: "combo-completo", nombre: "Corte + barba + mascarilla + lavado", precio: 25, duracion: 30 },
   ],
 };
 // ================================================================================================
@@ -129,13 +130,18 @@ async function reservar(request, env) {
   if ((await cuentaTel()) >= CONFIG.maxActivasPorTelefono) return err(msgLimite, 429);
   const fin = ini + sv.duracion, ref = codigo(), id = crypto.randomUUID();
   // Inserción ATÓMICA: solo se guarda si en ese momento no hay choque. Si dos clientes pulsan a la vez, solo entra uno.
-  await db.prepare(
-    "INSERT INTO reservas (id, ref, fecha, inicio, fin, servicio, duracion, nombre, telefono, notas, estado, creada) " +
-    "SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 'confirmada', ?11 " +
-    "WHERE (SELECT COUNT(*) FROM reservas WHERE fecha = ?3 AND estado = 'confirmada' AND inicio < ?5 AND fin > ?4) < ?12 " +
-    "AND (SELECT COUNT(*) FROM reservas WHERE telefono = ?9 AND estado = 'confirmada' AND fecha >= ?13) < ?14"
-  ).bind(id, ref, fecha, ini, fin, sv.nombre, sv.duracion, nombre, tel, notas, new Date().toISOString(),
-    CONFIG.capacidad, h.fecha, CONFIG.maxActivasPorTelefono).run();
+  try {
+    await db.prepare(
+      "INSERT INTO reservas (id, ref, fecha, inicio, fin, servicio, duracion, nombre, telefono, notas, estado, creada) " +
+      "SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 'confirmada', ?11 " +
+      "WHERE (SELECT COUNT(*) FROM reservas WHERE fecha = ?3 AND estado = 'confirmada' AND inicio < ?5 AND fin > ?4) < ?12 " +
+      "AND (SELECT COUNT(*) FROM reservas WHERE telefono = ?9 AND estado = 'confirmada' AND fecha >= ?13) < ?14"
+    ).bind(id, ref, fecha, ini, fin, sv.nombre, sv.duracion, nombre, tel, notas, new Date().toISOString(),
+      CONFIG.capacidad, h.fecha, CONFIG.maxActivasPorTelefono).run();
+  } catch (e) {
+    if (/UNIQUE|constraint/i.test(String((e && e.message) || e))) return err("Esa hora acaba de ocuparse. Elige otra.", 409);
+    throw e;
+  }
   // Comprobamos leyendo la fila: solo se confirma si la reserva está de verdad guardada en D1.
   const guardada = await db.prepare("SELECT id FROM reservas WHERE id = ?1 AND estado = 'confirmada'").bind(id).first();
   if (!guardada) {
