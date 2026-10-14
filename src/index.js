@@ -8,7 +8,6 @@ const CONFIG = {
   zona: "Europe/Madrid",
   // Horario real del cartel de T40. Día de la semana: 0=domingo ... 6=sábado. Lunes cerrado.
   horario: {
-   horario: {
     0: [["09:00", "14:30"], ["16:30", "21:00"]],
     1: [["09:00", "14:30"], ["16:30", "21:00"]],
     2: [["09:00", "14:30"], ["16:30", "21:00"]],
