@@ -174,9 +174,9 @@ async function admin(request, env, url) {
   if (request.method === "POST") {
     let b; try { b = JSON.parse(await request.text()); } catch (e) { return err("Datos no válidos"); }
     if (!b || b.accion !== "cancelar" || typeof b.id !== "string") return err("Acción no válida");
-    await db.prepare("UPDATE reservas SET estado = 'cancelada' WHERE id = ?1 AND estado = 'confirmada'").bind(b.id).run();
-    const x = await db.prepare("SELECT estado FROM reservas WHERE id = ?1").bind(b.id).first();
-    return J({ ok: true, cancelada: !!x && x.estado === "cancelada" });
+await db.prepare("DELETE FROM reservas WHERE id = ?1").bind(b.id).run();
+const x = await db.prepare("SELECT id FROM reservas WHERE id = ?1").bind(b.id).first();
+return J({ ok: true, cancelada: !x });
   }
   return err("Método no permitido", 405);
 }
