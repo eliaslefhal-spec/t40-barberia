@@ -268,8 +268,9 @@ section{padding:2.5rem 0}
 </section>
 
 <section>
-<h2>Horario y dónde estamos!</h2>
-<p>Todos los días: 9:00 a 14:30 y 15:30 a 21:00</p>
+<h2>Horario y dónde estamos</h2>
+<p>Martes a domingo: 9:00 a 14:00 y 16:00 a 21:00</p>
+<p>Lunes: cerrado</p>
 <p>Av. Perú, 62, 08304 Mataró, Barcelona</p>
 <p>WhatsApp: <span id="tel"></span></p>
 <p style="margin-top:1rem;display:flex;flex-wrap:wrap;gap:.6rem"><a class="btn" href="https://www.google.com/maps/search/?api=1&query=Av.%20Per%C3%BA%2C%2062%2C%2008304%20Matar%C3%B3%2C%20Barcelona" target="_blank" rel="noopener">Abrir en Google Maps</a><a class="btn ghost" href="https://maps.apple.com/?q=Av.%20Per%C3%BA%2C%2062%2C%2008304%20Matar%C3%B3%2C%20Barcelona" target="_blank" rel="noopener">Abrir en Mapas (iPhone)</a></p>
@@ -294,7 +295,7 @@ section{padding:2.5rem 0}
 <p id="r-carga">Cargando el sistema de reservas…</p>
 <div id="r-off" class="aviso" hidden><b>La reserva online aún no está disponible.</b><p>Mientras tanto, puedes solicitar tu cita por WhatsApp.</p></div>
 <div id="r-app" hidden>
-<p>¡Elige tu servicio, todos los días abierto!</p>
+<p>Elige servicio, día y hora. Los lunes está cerrado.</p>
 <ol class="pasos" id="r-pasos"><li class="act"><span>1</span>Día y hora</li><li><span>2</span>Tus datos</li><li><span>3</span>Confirmar</li></ol>
 <div class="paso" id="r-p1">
 <label>Servicio *<select id="r-serv"></select></label>
@@ -320,14 +321,15 @@ section{padding:2.5rem 0}
 <div class="fila"><button class="btn ghost" id="r-atras3" type="button">Volver</button><button class="btn" id="r-conf" type="button">Confirmar reserva</button></div>
 </div>
 <div class="paso" id="r-fin" hidden>
-  <h3 class="rev">¡Reserva confirmada!</h3>
-  <dl class="resumen" id="r-resumen2"></dl>
-  <p>Tu código de reserva es: <b id="r-ref"></b>. Guarda este código para identificar tu cita.</p>
-  <div class="fila">
-    <button class="btn ghost" id="r-nueva" type="button">Volver</button>
-  </div>
+<h3 class="rev">¡Reserva confirmada!</h3>
+<dl class="resumen" id="r-resumen2"></dl>
+<p>Tu código: <b id="r-ref"></b>. Para cambiar o cancelar la cita, escribe a T40 por WhatsApp.</p>
+<div class="fila"><a class="btn" id="r-wa-aviso" href="#cita" target="_blank" rel="noopener">Avisar a T40 por WhatsApp</a><button class="btn ghost" id="r-otra" type="button">Hacer otra reserva</button></div>
 </div>
+</div>
+<p id="r-wa-p"><button class="enlace" id="r-wa-btn" type="button">¿Prefieres solicitar la cita por WhatsApp?</button></p>
 <div id="r-wa" hidden>
+<p>Esto es una <b>solicitud por WhatsApp, no una reserva</b>: aquí no se comprueba qué horas están ocupadas. La cita no está confirmada hasta que T40 te responda. Atendemos por orden de llegada y los lunes está cerrado.</p>
 <form id="f" novalidate>
 <label>Nombre *<input id="n" autocomplete="name" maxlength="60" required></label>
 <label>Servicio *<select id="s" required><option value="">Elige un servicio</option><option>Corte normal (10 €)</option><option>Corte + barba (15 €)</option><option>Barba (6 €)</option><option>Mascarilla (5 €)</option><option>Proteína (50 €)</option><option>Mechas plateadas (50 €)</option><option>Corte + barba + mascarilla + lavado (25 €)</option></select></label>
@@ -347,15 +349,15 @@ section{padding:2.5rem 0}
 </div>
 </section>
 </div></div>
-<div class="slide" id="legal-slide"><div class="slide-in">
+
 <section id="legal" class="small">
 <h2>Aviso legal y privacidad</h2>
+<p class="draft"><b>Borrador.</b> Completa los datos en amarillo y que lo revise un gestor antes de publicar. Luego borra este párrafo.</p>
 <p><b>Titular:</b> <mark>[PENDIENTE: nombre y apellidos o razón social]</mark>, NIF/CIF <mark>[PENDIENTE]</mark>, domicilio <mark>[PENDIENTE: domicilio fiscal]</mark>, correo <mark>[PENDIENTE]</mark>. Nombre comercial: T40. Datos del Registro Mercantil: <mark>[PENDIENTE: solo si es sociedad]</mark>.</p>
 <p><b>Privacidad:</b> si reservas con el sistema de reservas, guardamos tu nombre, teléfono, comentarios, servicio, día y hora en una base de datos alojada en Cloudflare, para gestionar tu cita y poder contactarte si hace falta. Si solicitas la cita por WhatsApp, ese formulario no guarda nada en la web: prepara un mensaje que envías tú y WhatsApp (Meta) lo procesa. Base jurídica: tu consentimiento. <mark>[REVISAR con el gestor]</mark> Puedes pedir acceso, rectificación o supresión escribiendo a <mark>[PENDIENTE: correo]</mark>. Si no te respondemos bien, puedes reclamar ante la Agencia Española de Protección de Datos (aepd.es). Los menores de 14 años necesitan el permiso de sus padres o tutores. Plazo de conservación de los mensajes: <mark>[PENDIENTE]</mark>.</p>
 <p><b>Fotos:</b> las personas que aparecen han dado su permiso: <mark>[PENDIENTE: confirmar con el dueño]</mark>.</p>
 <p><b>Servicios externos:</b> la web usa Cloudflare para alojarse y guardar las reservas, enlaza con WhatsApp, Google Maps, Apple Maps e Instagram y carga tipografías de Google Fonts. <mark>[REVISAR con el gestor]</mark></p>
 </section>
-</div></div>
 </main>
 <div class="vis" id="vis" hidden role="dialog" aria-modal="true" aria-label="Foto ampliada">
 <button type="button" class="vis-b vis-x" id="vis-x" aria-label="Cerrar foto">×</button>
@@ -655,16 +657,6 @@ $("d").addEventListener("change", function(){
   if (ctl) setTimeout(function(){ ctl.abort(); }, 8000);
   api("/api/config", ctl ? {signal: ctl.signal} : {}).then(function(c){ if (c.ok && c.listo) iniReservas(c); else apagado(); }).catch(apagado);
 })();
-// ===== AVISO LEGAL: oculto hasta que se pulsa el enlace =====
-function abrirLegal(){
-  $("legal-slide").classList.add("open");
-  var t0 = Date.now();
-  (function sigue(){ $("legal").scrollIntoView({block: "start"}); if (Date.now() - t0 < 900) requestAnimationFrame(sigue); })();
-}
-document.querySelectorAll('a[href="#legal"]').forEach(function(a){
-  a.addEventListener("click", function(ev){ ev.preventDefault(); abrirLegal(); });
-});
-if (location.hash === "#legal") abrirLegal();
 </script>
 </body>
 </html>
