@@ -13,5 +13,8 @@
       "database_name": "t40-reservas",
       "database_id": "51a0f59d-f312-4f19-8a99-024c92971deb"
     }
-  ]
+  ],
+  "triggers": {
+    "crons": ["0 3 * * *"]
+  }
 }
