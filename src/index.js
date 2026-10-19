@@ -181,7 +181,18 @@ return J({ ok: true, cancelada: !x });
   return err("Método no permitido", 405);
 }
 
+// Conservación de datos: las reservas se borran 14 días después de la fecha de la cita (lo que dice el aviso legal).
+const DIAS_CONSERVAR = 14;
+async function limpiarAntiguas(env) {
+  if (!env.DB) return 0;
+  const limite = masDias(ahora().fecha, -DIAS_CONSERVAR);
+  const r = await env.DB.prepare("DELETE FROM reservas WHERE fecha <= ?1").bind(limite).run();
+  return r && r.meta ? r.meta.changes : 0;
+}
+
 export default {
+  // Cloudflare lo ejecuta solo, cada día (ver "triggers" en wrangler.jsonc)
+  async scheduled(controller, env, ctx) { ctx.waitUntil(limpiarAntiguas(env)); },
   async fetch(request, env) {
     const url = new URL(request.url), p = url.pathname.replace(/\/+$/, "");
     if (!p.startsWith("/api/")) return env.ASSETS.fetch(request);
@@ -190,6 +201,8 @@ export default {
         const o = request.headers.get("Origin");
         if (o && new URL(o).host !== url.host) return err("Origen no permitido", 403);
       }
+      // Copia de seguridad de la limpieza diaria: también se limpia al reservar o abrir el panel
+      if (p === "/api/reservar" || p === "/api/admin") await limpiarAntiguas(env).catch(function () {});
       if (p === "/api/config" && request.method === "GET") return config(env);
       if (p === "/api/disponibilidad" && request.method === "GET") return await disponibilidad(env, url);
       if (p === "/api/reservar" && request.method === "POST") return await reservar(request, env);
