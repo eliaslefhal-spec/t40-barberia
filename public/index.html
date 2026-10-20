@@ -657,6 +657,16 @@ $("d").addEventListener("change", function(){
   if (ctl) setTimeout(function(){ ctl.abort(); }, 8000);
   api("/api/config", ctl ? {signal: ctl.signal} : {}).then(function(c){ if (c.ok && c.listo) iniReservas(c); else apagado(); }).catch(apagado);
 })();
+// ===== AVISO LEGAL: oculto hasta que se pulsa el enlace =====
+function abrirLegal(){
+  $("legal-slide").classList.add("open");
+  var t0 = Date.now();
+  (function sigue(){ $("legal").scrollIntoView({block: "start"}); if (Date.now() - t0 < 900) requestAnimationFrame(sigue); })();
+}
+document.querySelectorAll('a[href="#legal"]').forEach(function(a){
+  a.addEventListener("click", function(ev){ ev.preventDefault(); abrirLegal(); });
+});
+if (location.hash === "#legal") abrirLegal();
 </script>
 </body>
 </html>
