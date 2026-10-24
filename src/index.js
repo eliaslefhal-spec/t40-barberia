@@ -181,7 +181,7 @@ return J({ ok: true, cancelada: !x });
   return err("Método no permitido", 405);
 }
 
-// Conservación de datos: las reservas se borran 14 días después de la fecha de la cita (lo que dice el aviso legal).
+// Conservación de datos: las reservas se borran 7 días después de la fecha de la cita (lo que dice el aviso legal).
 const DIAS_CONSERVAR = 7;
 async function limpiarAntiguas(env) {
   if (!env.DB) return 0;
